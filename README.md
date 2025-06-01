@@ -295,3 +295,64 @@ response = chain({'topic': '...', 'genre': '...', 'language': '...'})
 
 print(response)
 ```
+
+### 5. Document Loader, Splitter
+
+<img src='./images/8-document-loader.png' />
+
+- **Loaders** classes for accessing, processing and converting documents different data types (PDF, HTML, Word, Powerpoint, CSV, JSON, etc.) into format that LLMs can understand (list of docoment objects).
+
+<img src='./images/8-loader.png' />
+
+Example:
+```python
+# pip install pypdf
+from langchain.document_loaders import PyPDFLoader
+
+# Create loader
+loader = PyPDFLoader('document.pdf')
+
+# Load pages from document
+pages = loader.load()
+
+# Test
+print(len(pages))
+print(pages[0].page_content)
+print(pages[0].metadata)
+```
+
+- **Splitter** classes for splitting documents into smaller chunks.
+
+<img src='./images/8-splitter.png' />
+
+Example:
+```python
+from langchain.text_splitter import CharacterTextSplitter, RecursiveCharacterTextSplitter
+
+# Open document
+with open('document.pdf', 'rb') as f:
+    speech = f.read()
+
+# Create splitter
+text_splitter = CharacterTextSplitter(
+    chunk_size=100,
+    chunk_overlap=20,
+    length_function=len,
+    # is_separator_regex=False,
+)
+
+texts = text_splitter.create_documents([speech])
+
+# Recursive splitter: try to keep paragraphs sentencs and words as long as possible
+# The strongest semantically related chunks of text
+# Recommended to use in most cases
+
+recursive_text_splitter = RecursiveCharacterTextSplitter(
+    chunk_size=500,
+    chunk_overlap=100,
+    length_function=len,
+    add_start_index=True,
+)
+
+documents = recursive_text_splitter.create_documents([speech])
+```
