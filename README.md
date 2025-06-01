@@ -356,3 +356,113 @@ recursive_text_splitter = RecursiveCharacterTextSplitter(
 
 documents = recursive_text_splitter.create_documents([speech])
 ```
+
+### 6. Storage (Vector Store & Embeddings)
+
+<img src='./images/9-vector-store.png' />
+
+<img src='./images/9-similar-vector.png' />
+
+- Create vector store from documents (chunks):
+<img src='./images/9-storage-process.png' />
+
+- Embed query and search to find most similar content for the query:
+<img src='./images/9-query-and-search-process.png' />
+
+Example:
+```python
+from langchain.embeddings import OpenAIEmbeddings
+from langchain.vectorstores import Chroma # pip install chromadb
+import numpy as np
+
+# Create embeddings model
+embeddings = OpenAIEmbeddings()
+
+query1 = 'What is the capital of Vietnam?'
+query2 = 'What is the capital of France?'
+
+embeddings1 = embeddings.embed_query(query1)
+embeddings2 = embeddings.embed_query(query2)
+
+similarity = np.dot(embeddings1, embeddings2)
+
+# Create vector store
+vectorstore = Chroma.from_documents(
+    documents=documents, # Suppose we have a list of documents split from a PDF file
+    embedding=embeddings,
+    persist_directory='./chroma_db',
+)
+
+question = 'What is the capital of Bolivia?'
+
+# Search for most similar documents
+docs = vectorstore.similarity_search(query=question, k=3)
+
+# Print results
+for doc in docs:
+    print(doc.page_content)
+
+# Save vector store for later usage
+vectorstore.persist()
+```
+
+**Langchain Retriever:**
+```python
+vector_store = Chroma(
+    persist_directory='./chroma_db',
+    embedding_function=embeddings
+)
+
+# Create retriever
+retriever = vector_store.as_retriever(
+    search_kwargs={'k': 3},
+    search_type='similarity'
+)
+
+docs = retriever.get_relevant_documents(question)
+
+for doc in docs:
+    print(doc.page_content)
+
+```
+
+Example: Make a chain to answer questions
+```python
+from langchain.chains import RetrievalQA
+from langchain.prompts import PromptTemplate
+
+# Create prompt
+template = """Given the following documents, answer the question.
+
+Documents: {context}
+
+Question: {question}
+
+Answer:"""
+
+llm = ChatOpenAI(model='gpt-4o-mini', temperature=0.7)
+
+prompt = PromptTemplate(
+    input_variables=['context', 'question'],
+    template=template,
+)
+
+# Create chain
+chain = RetrievalQA.from_chain_type(
+    llm=llm,
+    chain_type='stuff',
+    retriever=retriever,
+    prompt=prompt,
+    return_source_documents=True,
+    verbose=True,
+)
+
+# Run chain
+response = chain(question)
+
+# Print result
+print(response['result'])
+for source in response['source_documents']:
+    print(source.metadata['source'])
+```
+
